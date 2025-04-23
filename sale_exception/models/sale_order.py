@@ -16,12 +16,19 @@ class SaleOrder(models.Model):
     @api.model
     def _reverse_field(self):
         return "sale_ids"
-
+    
     def detect_exceptions(self):
-        vals = self._get_exception_vals()
+        all_exceptions = super().detect_exceptions()
         lines = self.mapped("order_line")
-        vals = lines._get_exception_vals()
-        return vals
+        all_exceptions += lines.detect_exceptions()
+        return all_exceptions
+
+    def detect_exceptions_vals(self):
+        vals = defaultdict(list)
+        order_exception_ids, vals = self._get_exception_vals(vals=vals)
+        lines = self.mapped("order_line")
+        line_exception_ids, vals = lines._get_exception_vals(vals=vals)       
+        return order_exception_ids + line_exception_ids, vals
 
     @api.model
     def test_all_draft_orders(self):
@@ -50,29 +57,30 @@ class SaleOrder(models.Model):
             orders._check_exception()
 
     def action_confirm(self):
-        vals = self.detect_exceptions()
-        if vals:
-            new_cr = Registry(self.env.cr.dbname).cursor()
-            env = api.Environment(new_cr, self.env.uid, self.env.context)
-            for records, values in vals.items():
-                env[records._name].browse(records.id).write({'exception_ids': values})
-            new_cr.commit()
-            new_cr.close()
-            # raise RedirectWarning(
-            #     _('Exceptions'),
-            #     self.env.ref('').id,
-            #     _("Go to the configuration panel"),
-            # )
+        all_exception_ids, vals = self.filtered(lambda x: not x.ignore_exception).detect_exceptions_vals()
+        if all_exception_ids:
+            exception_text ='\n'.join([
+                f"{exception['name']}: {exception['description']}" 
+                for exception in self.env['exception.rule'].browse(all_exception_ids)]
+            )
+            if vals:
+                new_cr = Registry(self.env.cr.dbname).cursor()
+                env = api.Environment(new_cr, self.env.uid, self.env.context)
+                for records, values in vals.items():
+                    env[records._name].browse(records.id).write({'exception_ids': values})
+                new_cr.commit()
+                new_cr.close()
             raise RedirectWarning(
-                _('Ver excepciones'),
+                exception_text,
                 {
                     'type': 'ir.actions.act_window',
                     'name': self.name,
                     'res_model': 'sale.exception.confirm',
-                    'view_mode': 'form',
+                    'views': [(False, 'form')],
                     'res_id': False,
                     'target': 'new',
-                    'context': {'active_ids': self.ids, 'active_model': 'sale.order'}
+                    'view_id': self.env.ref('sale_exception.view_sale_exception_confirm').id,
+                    'context': {'active_id': self.id, 'active_ids': self.ids, 'active_model': 'sale.order'},
                 },
                 _("Go to the excepctions"),
             )
@@ -97,31 +105,3 @@ class SaleOrder(models.Model):
         return super(
             SaleOrder, self.with_context(check_exception=False)
         ).action_unlock()
-
-class BaseExceptionMethod(models.AbstractModel):
-    _inherit = "base.exception.method"
-
-    def _get_exception_vals(self):
-        """List all exception_ids applied on self
-        Exception ids are also written on records
-        """
-        vals = defaultdict(list)
-        all_exception_ids, rules_to_remove, rules_to_add = self._get_exceptions()
-        # Cumulate all the records to attach to the rule
-        # before linking. We don't want to call "rule.write()"
-        # which would:
-        # * write on write_date so lock the exception.rule
-        # * trigger the recomputation of "main_exception_id" on
-        #   all the sale orders related to the rule, locking them all
-        #   and preventing concurrent writes
-        # Reversing the write by writing on SaleOrder instead of
-        # ExceptionRule fixes the 2 kinds of unexpected locks.
-        # It should not result in more queries than writing on ExceptionRule:
-        # the "to remove" part generates one DELETE per rule on the relation
-        # table 
-        # and the "to add" part generates one INSERT (with unnest) per rule.
-        for rule_id, records in rules_to_remove.items():
-            vals[records].append((3, rule_id))
-        for rule_id, records in rules_to_add.items():
-            vals[records].append((4, rule_id))
-        return vals
