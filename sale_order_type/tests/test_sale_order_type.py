@@ -240,6 +240,54 @@ class TestSaleOrderType(BaseCommon):
         self.assertEqual(invoice.invoice_payment_term_id, sale_type.payment_term_id)
         self.assertEqual(invoice.journal_id, sale_type.journal_id)
 
+    def test_invoice_change_journal_keeps_manual_payment_term(self):
+        partner = self.env["res.partner"].create(
+            {
+                "name": "Invoice Term Test Partner",
+                "property_payment_term_id": self.immediate_payment.id,
+            }
+        )
+        manual_payment_term = self.env.ref("account.account_payment_term_30days")
+        sale_type_without_payment_term = self.sale_type.copy(
+            {"name": "Sale Type Without Payment Term", "payment_term_id": False}
+        )
+        other_journal = self.env["account.journal"].create(
+            {
+                "name": "Alternative Sales Journal",
+                "code": "ASJ1",
+                "type": "sale",
+                "company_id": self.env.company.id,
+            }
+        )
+        invoice = self.invoice_model.new()
+        invoice.partner_id = partner
+        invoice.sale_type_id = sale_type_without_payment_term
+        invoice.invoice_payment_term_id = manual_payment_term
+        invoice.journal_id = other_journal
+        self.assertEqual(invoice.journal_id, other_journal)
+        self.assertEqual(invoice.invoice_payment_term_id, manual_payment_term)
+
+    def test_invoice_change_journal_other_company_recomputes_type(self):
+        other_company = self.env["res.company"].create({"name": "Other SOT Company"})
+        self.env.user.company_ids = [(4, other_company.id)]
+        self.env["account.chart.template"].try_loading(
+            "generic_coa", company=other_company, install_demo=False
+        )
+        other_journal = self.env["account.journal"].search(
+            [("type", "=", "sale"), ("company_id", "=", other_company.id)], limit=1
+        )
+        other_sale_type = self.sale_type_model.create(
+            {"name": "Other Company Sale Type", "company_id": other_company.id}
+        )
+        partner = self.env["res.partner"].create({"name": "Multi Company Partner"})
+        partner.with_company(self.env.company).sale_type = self.sale_type
+        partner.with_company(other_company).sale_type = other_sale_type
+        invoice = self.invoice_model.create({"partner_id": partner.id})
+        self.assertEqual(invoice.sale_type_id, self.sale_type)
+        invoice.journal_id = other_journal
+        self.assertEqual(invoice.company_id, other_company)
+        self.assertEqual(invoice.sale_type_id, other_sale_type)
+
     def test_invoice_change_partner(self):
         invoice = self.create_invoice()
         self.assertEqual(invoice.sale_type_id, self.sale_type)
