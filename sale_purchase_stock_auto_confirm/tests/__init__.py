@@ -1,1 +1,0 @@
-from . import test_sale_purchase_stock_auto_confirm

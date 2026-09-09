@@ -1,7 +1,0 @@
-- Camptocamp
-  - Akim Juillerat \<<akim.juillerat@camptocamp.com>\>
-  - David Gallay \<<david.gallay@camptocamp.com>\>
-  - Simone Orsi \<<simahawk@gmail.com>\>
-  - Thierry Ducrest \<<thierry.ducrest@camptocamp.com>\>
-- Trobz
-  - chaule97 \<<lebaochau97@gmail.com>\>

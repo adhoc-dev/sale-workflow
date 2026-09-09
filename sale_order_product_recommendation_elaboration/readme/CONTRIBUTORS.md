@@ -1,2 +1,0 @@
-- Jairo Llopis ([Moduon](https://www.moduon.team/))
-- Tris Doan ([Trobz](https://www.trobz.com/))

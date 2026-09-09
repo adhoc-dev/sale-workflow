@@ -47,12 +47,36 @@ class SaleOrder(models.Model):
         if orders:
             orders._check_exception()
 
-    def _must_popup_exception(self):
-        return self.env.company.sale_exception_show_popup
-
     def action_confirm(self):
-        self.detect_exceptions()
+        if self.detect_exceptions():
+            exception_map = {sale.id: sale.exception_ids.ids for sale in self}
+            self.env.cr.rollback()
+            for sale in self:
+                exception_ids = exception_map.get(sale.id, [])
+                sale.write({"exception_ids": [(6, 0, exception_ids)]})
+            if not self.env.company.sale_exception_show_popup:
+                return
+            return self._popup_exceptions()
         return super().action_confirm()
+
+    def _register_hook(self):
+        ModelClass = self.env.registry["sale.order"]
+
+        original_action_confirm = ModelClass.action_confirm
+
+        def patched_action_confirm(self):
+            if self.detect_exceptions():
+                if not self.env.company.sale_exception_show_popup:
+                    return
+                return self._popup_exceptions()
+            original_func = patched_action_confirm.origin
+            return original_func(self)
+
+        patched_action_confirm.origin = original_action_confirm
+
+        ModelClass.action_confirm = patched_action_confirm
+
+        return super()._register_hook()
 
     def action_draft(self):
         res = super().action_draft()

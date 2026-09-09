@@ -1,1 +1,0 @@
-- Add compatibility with the Odoo Product Catalog feature

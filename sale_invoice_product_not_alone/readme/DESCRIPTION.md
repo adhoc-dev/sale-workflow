@@ -1,1 +1,0 @@
-This module allows to set on product if it can be invoiced alone. This makes those sale orders not to appear.

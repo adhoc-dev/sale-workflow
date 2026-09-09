@@ -1,2 +1,0 @@
-In some cases, a sales order can automatically generate a purchase order when the products use a Dropship or MTO logistics route. 
-If the original sales order is canceled, users expect these purchase orders to be canceled automatically.

@@ -1,7 +1,0 @@
-- Jordi Masvidal \<<jordi.masvidal@forgeflow.com>\>
-- [OERP Canada](https://www.oerp.ca/):
-  - Foram Darji \<<fd@oerp.ca>\>
-- Heliconia Solutions Pvt. Ltd. \<<https://www.heliconia.io>\>
-- ACSONE SA/NV (https://acsone.eu)
-  - Alexis Anthonissen \<<alexis.anthonissen@acsone.eu>\>
-  - Stéphane Mangin \<<stephane.mangin@acsone.eu>\>

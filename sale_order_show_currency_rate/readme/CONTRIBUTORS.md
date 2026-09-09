@@ -1,1 +1,0 @@
-- Cristina Hidalgo <cristina.hidalgo@tecnativa.com>

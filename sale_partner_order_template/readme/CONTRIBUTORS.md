@@ -1,4 +1,0 @@
-- [Binhex Cloud] (https://www.binhex.cloud):
-  - Edilio Escalona Almira <e.escalona@binhex.cloud>
-- ACSONE SA/NV
-  - Stéphane Mangin <stephane.mangin@acsone.eu>
